@@ -1,0 +1,4 @@
+data:
+  csv_path: "data/raw/raw_dataset.csv"
+model:
+  input_size: 5 # признаки (lat, lng, alt, spd, azm)
