@@ -2,6 +2,9 @@ from h3 import latlng_to_cell
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import os
+
+# Алгоритм анализа H3
 
 def analyze_geodata(df):
     # Assign H3 index for each point
@@ -18,11 +21,14 @@ def identify_popular_routes(df):
     popular_routes = df.groupby(['start_h3_index', 'end_h3_index']).size().reset_index(name='count')
     return popular_routes.sort_values(by='count', ascending=False)
 
-def plot_heatmap(df):
+def plot_heatmap(df, save_path=None):
     df['count'] = 1
     heatmap_data = df.pivot_table(index='lat', columns='lng', values='count', aggfunc='sum', fill_value=0)
     sns.heatmap(heatmap_data, cmap='YlGnBu')
     plt.title('Тепловая карта спроса')
+    if save_path:
+        plt.savefig(save_path)
+        print(f"Heatmap was saved to {save_path}")
     plt.show()
 
 def optimize_driver_distribution(df, total_drivers=100):

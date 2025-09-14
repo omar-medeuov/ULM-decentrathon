@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class H3model(nn.Module):
+class H3model(nn.Module): ## модель
     def __init__(self, input_size):
         super(H3model, self).__init__()
         self.fc1 = nn.Linear(input_size, 64)

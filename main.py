@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import os
 from models.H3model import H3model
 from src.data.load_data import load_data
 from src.data.preprocess import (preprocess_data)
@@ -48,3 +49,8 @@ for epoch in range(num_epochs):
     # Вывод информации о процессе обучения
     if (epoch + 1) % 10 == 0:  # Каждые 10 эпох
         print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+
+processed_info_dir = "data/processed"
+df.to_csv(os.path.join(processed_info_dir, "processed_data.csv"), index=False)
+print("Processed data was saved to data/processed/processed_data.csv")
+plot_heatmap(df, save_path=os.path.join(processed_info_dir, "demand_heatmap.png"))
