@@ -4,7 +4,7 @@ import os
 from models.H3model import H3model
 from src.data.load_data import load_data
 from src.data.preprocess import (preprocess_data)
-from src.data.h3_analyze import (analyze_geodata, identify_popular_routes, plot_heatmap, optimize_driver_distribution, safety_scenarios)
+from src.data.h3_analyze import (analyze_geodata, identify_popular_routes, plot_heatmap_scatterplot, optimize_driver_distribution, safety_scenarios, plot_heatmap_on_map)
 from sklearn.model_selection import *
 import torch.optim as optim
 
@@ -53,4 +53,7 @@ for epoch in range(num_epochs):
 processed_info_dir = "data/processed"
 df.to_csv(os.path.join(processed_info_dir, "processed_data.csv"), index=False)
 print("Processed data was saved to data/processed/processed_data.csv")
-plot_heatmap(df, save_path=os.path.join(processed_info_dir, "demand_heatmap.png"))
+plot_heatmap_scatterplot(df, save_path=os.path.join(processed_info_dir, "demand_heatmap.png"))
+plot_heatmap_on_map(df, save_path=os.path.join(processed_info_dir, "demand_heatmap_MAP.html"))
+
+optimize_driver_distribution(df, 100)

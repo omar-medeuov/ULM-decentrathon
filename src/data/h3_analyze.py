@@ -3,6 +3,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
+import h3
+import folium
+from folium.plugins import HeatMap
 
 # Алгоритм анализа H3
 
@@ -21,7 +24,7 @@ def identify_popular_routes(df):
     popular_routes = df.groupby(['start_h3_index', 'end_h3_index']).size().reset_index(name='count')
     return popular_routes.sort_values(by='count', ascending=False)
 
-def plot_heatmap(df, save_path=None):
+def plot_heatmap_scatterplot(df, save_path=None):
     # Aggregate demand by H3 cell
     h3_counts = df['h3_index'].value_counts().reset_index()
     h3_counts.columns = ['h3_index', 'count']
@@ -36,10 +39,36 @@ def plot_heatmap(df, save_path=None):
         palette='YlGnBu', legend=False, sizes=(20, 200)
     )
     plt.title('Тепловая карта спроса (по H3)')
+    plt.xlim(h3_counts['lng'].min() - 0.01, h3_counts['lng'].max() + 0.01)
+    plt.ylim(h3_counts['lat'].min() - 0.01, h3_counts['lat'].max() + 0.01)
     if save_path:
         plt.savefig(save_path)
         print(f"Heatmap saved to {save_path}")
     plt.show()
+
+
+def plot_heatmap_on_map(df, save_path=None):
+    h3_counts = df['h3_index'].value_counts().reset_index()
+    h3_counts.columns = ['h3_index', 'count']
+    h3_counts['lat'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
+    h3_counts['lng'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
+    # Center and zoom based on data
+    center_lat = h3_counts['lat'].mean()
+    center_lng = h3_counts['lng'].mean()
+    m = folium.Map(location=[center_lat, center_lng], zoom_start=12)
+
+    # Optionally, restrict map bounds to your data
+    sw = [h3_counts['lat'].min(), h3_counts['lng'].min()]
+    ne = [h3_counts['lat'].max(), h3_counts['lng'].max()]
+    m.fit_bounds([sw, ne])
+
+    heat_data = h3_counts[['lat', 'lng', 'count']].values.tolist()
+    HeatMap(heat_data, radius=15, blur=10, max_zoom=1).add_to(m)
+
+    if save_path:
+        m.save(save_path)
+        print(f"Interactive heatmap saved to {save_path}")
+    return m
 
 def optimize_driver_distribution(df, total_drivers=100):
     demand = df.groupby('h3_index').size().reset_index(name='demand')
