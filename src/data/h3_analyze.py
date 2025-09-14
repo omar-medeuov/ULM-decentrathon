@@ -74,13 +74,18 @@ def identify_popular_routes(df):
     return popular_routes.sort_values(by='count', ascending=False)
 
 
-def plot_heatmap_on_map(df, value_column="count", save_path=None, top_quantile=0.7):
+def plot_heatmap_on_map(df, value_column="count", save_path=None, top_quantile=0.6):
     """
     Строит интерактивную тепловую карту (folium) только для топовых зон.
     
     top_quantile: float
         Порог по квантилю (0.7 = оставить только 30% самых "горячих" зон)
     """
+    if "lat" not in df.columns or "lng" not in df.columns:
+        df = df.copy()
+        df['lat'] = df['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
+        df['lng'] = df['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
+
     # агрегируем по h3
     h3_counts = df.groupby("h3_index")[value_column].sum().reset_index()
     h3_counts['lat'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
