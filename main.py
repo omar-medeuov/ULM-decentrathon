@@ -26,6 +26,11 @@ model = H3model(input_size=X_train.shape[1])
 criterion = nn.MSELoss()  # Для регрессии
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
+y = df['spd'].values
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+outputs = model(torch.FloatTensor(X_train))
+
+
 # Обучение модели
 num_epochs = 100
 for epoch in range(num_epochs):
@@ -34,7 +39,7 @@ for epoch in range(num_epochs):
 
     # Прямое распространение
     outputs = model(torch.FloatTensor(X_train))  # Преобразование данных в тензоры
-    loss = criterion(outputs, torch.FloatTensor().view(-1, 1))  # Вычисление потерь
+    loss = criterion(outputs, torch.FloatTensor(y_train).view(-1, 1))  # Вычисление потерь
 
     # Обратное распространение
     loss.backward()  # Вычисление градиентов
