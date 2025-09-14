@@ -7,13 +7,13 @@ import h3
 import folium
 from folium.plugins import HeatMap
 
-# Алгоритм анализа H3
+# Алгоритм анализа H3 --->
 
 def analyze_geodata(df):
-    # Assign H3 index for each point
+    # <--- Назначение H3 идекса на каждую точку --->
     df['h3_index'] = df.apply(lambda row: latlng_to_cell(row['lat'], row['lng'], 9), axis=1)
-    # For each trip, get start and end H3 index
-    df = df.sort_values(['randomized_id', 'azm'])  # Sort by trip and azimuth (or timestamp if available)
+    # <--- For each trip, get start and end H3 index --->
+    df = df.sort_values(['randomized_id', 'azm'])  # <--- Sort by trip and azimuth --->
     start_h3 = df.groupby('randomized_id')['h3_index'].first().rename('start_h3_index')
     end_h3 = df.groupby('randomized_id')['h3_index'].last().rename('end_h3_index')
     df = df.join(start_h3, on='randomized_id')
@@ -25,14 +25,14 @@ def identify_popular_routes(df):
     return popular_routes.sort_values(by='count', ascending=False)
 
 def plot_heatmap_scatterplot(df, save_path=None):
-    # Aggregate demand by H3 cell
+    # <--- Aggregate demand by H3 cell --->
     h3_counts = df['h3_index'].value_counts().reset_index()
     h3_counts.columns = ['h3_index', 'count']
     # Get the center lat/lng for each H3 cell
     import h3
     h3_counts['lat'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
     h3_counts['lng'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
-    # Plot using rounded coordinates for a 2D heatmap
+    # <--- Plot using rounded coordinates для тепловой карты!!! --->
     plt.figure(figsize=(10, 8))
     sns.scatterplot(
         data=h3_counts, x='lng', y='lat', size='count', hue='count',
@@ -52,12 +52,11 @@ def plot_heatmap_on_map(df, save_path=None):
     h3_counts.columns = ['h3_index', 'count']
     h3_counts['lat'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
     h3_counts['lng'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
-    # Center and zoom based on data
     center_lat = h3_counts['lat'].mean()
     center_lng = h3_counts['lng'].mean()
     m = folium.Map(location=[center_lat, center_lng], zoom_start=12)
 
-    # Optionally, restrict map bounds to your data
+    # ограничение карты, чтобы не включать всю карту мира
     sw = [h3_counts['lat'].min(), h3_counts['lng'].min()]
     ne = [h3_counts['lat'].max(), h3_counts['lng'].max()]
     m.fit_bounds([sw, ne])
@@ -76,6 +75,7 @@ def optimize_driver_distribution(df, total_drivers=100):
     print(demand[['h3_index', 'demand', 'driver_allocation']].sort_values('driver_allocation', ascending=False))
     return demand
 
+# алгоритм для сценария безопасности (отклонения от маршрута, скорость, и тд...) 
 def safety_scenarios(
     df,
     threshold_speed=120,
