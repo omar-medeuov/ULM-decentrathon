@@ -4,7 +4,7 @@ import os
 from models.H3model import H3model
 from src.data.load_data import load_data
 from src.data.h3_analyze import (
-    analyze_geodata, plot_heatmap_scatterplot, plot_heatmap_on_map, optimize_driver_distribution
+    analyze_geodata, plot_heatmap_on_map, optimize_driver_distribution, plot_od_on_map
 )
 from sklearn.model_selection import train_test_split
 import torch.optim as optim
@@ -13,7 +13,7 @@ import pandas as pd
 
 df = load_data()
 df = analyze_geodata(df)
-
+od_map = plot_od_on_map(df, save_path="data/processed/od_map.html", top_n=50)
 
 h3_features = df.groupby('h3_index').agg({
     'lat': 'mean',
@@ -64,7 +64,6 @@ print("Processed H3 data was saved to data/processed/processed_h3_data.csv")
 h3_features['h3_index'] = h3_features['h3_index'].astype(str)
 df_heatmap = h3_features.copy()
 df_heatmap['count'] = df_heatmap['predicted_demand']
-plot_heatmap_scatterplot(df_heatmap, save_path=os.path.join(processed_info_dir, "demand_heatmap.png"))
 plot_heatmap_on_map(df_heatmap, save_path=os.path.join(processed_info_dir, "demand_heatmap_MAP.html"))
 
 # распредение водителей, в зависимости от спроса --->

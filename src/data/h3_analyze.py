@@ -20,48 +20,87 @@ def analyze_geodata(df):
     df = df.join(end_h3, on='randomized_id')
     return df
 
+def plot_od_on_map(df, save_path=None, top_n=50):
+    """
+    Визуализация OD-матрицы на карте.
+    
+    df : DataFrame
+        Должен содержать колонки start_h3_index, end_h3_index, count
+    save_path : str
+        Куда сохранить HTML-карту
+    top_n : int
+        Количество самых популярных маршрутов для отображения
+    """
+
+    # отбираем топ-N популярных маршрутов
+    routes = (
+        df.groupby(['start_h3_index', 'end_h3_index'])
+        .size()
+        .reset_index(name='count')
+        .sort_values('count', ascending=False)
+        .head(top_n)
+    )
+
+    # центр карты = среднее значение по всем маршрутам
+    routes['start_lat'] = routes['start_h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
+    routes['start_lng'] = routes['start_h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
+    routes['end_lat']   = routes['end_h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
+    routes['end_lng']   = routes['end_h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
+
+    center_lat = routes[['start_lat','end_lat']].to_numpy().mean()
+    center_lng = routes[['start_lng','end_lng']].to_numpy().mean()
+
+    m = folium.Map(location=[center_lat, center_lng], zoom_start=12)
+
+    # рисуем линии между start и end
+    for _, row in routes.iterrows():
+        folium.PolyLine(
+            locations=[(row['start_lat'], row['start_lng']),
+                       (row['end_lat'], row['end_lng'])],
+            weight=2 + (row['count'] / routes['count'].max()) * 5,  # толщина зависит от спроса
+            color="blue",
+            opacity=0.6,
+            tooltip=f"Count: {row['count']}"
+        ).add_to(m)
+
+    if save_path:
+        m.save(save_path)
+        print(f"OD map saved to {save_path}")
+
+    return m
+
 def identify_popular_routes(df):
     popular_routes = df.groupby(['start_h3_index', 'end_h3_index']).size().reset_index(name='count')
     return popular_routes.sort_values(by='count', ascending=False)
 
-def plot_heatmap_scatterplot(df, save_path=None):
-    # <--- Aggregate demand by H3 cell --->
-    h3_counts = df['h3_index'].value_counts().reset_index()
-    h3_counts.columns = ['h3_index', 'count']
-    # Get the center lat/lng for each H3 cell
-    import h3
+
+def plot_heatmap_on_map(df, value_column="count", save_path=None, top_quantile=0.7):
+    """
+    Строит интерактивную тепловую карту (folium) только для топовых зон.
+    
+    top_quantile: float
+        Порог по квантилю (0.7 = оставить только 30% самых "горячих" зон)
+    """
+    # агрегируем по h3
+    h3_counts = df.groupby("h3_index")[value_column].sum().reset_index()
     h3_counts['lat'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
     h3_counts['lng'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
-    # <--- Plot using rounded coordinates для тепловой карты!!! --->
-    plt.figure(figsize=(10, 8))
-    sns.scatterplot(
-        data=h3_counts, x='lng', y='lat', size='count', hue='count',
-        palette='YlGnBu', legend=False, sizes=(20, 200)
-    )
-    plt.title('Тепловая карта спроса (по H3)')
-    plt.xlim(h3_counts['lng'].min() - 0.01, h3_counts['lng'].max() + 0.01)
-    plt.ylim(h3_counts['lat'].min() - 0.01, h3_counts['lat'].max() + 0.01)
-    if save_path:
-        plt.savefig(save_path)
-        print(f"Heatmap saved to {save_path}")
-    plt.show()
 
+    # фильтруем только топовые ячейки
+    threshold = h3_counts[value_column].quantile(top_quantile)
+    h3_top = h3_counts[h3_counts[value_column] >= threshold]
 
-def plot_heatmap_on_map(df, save_path=None):
-    h3_counts = df['h3_index'].value_counts().reset_index()
-    h3_counts.columns = ['h3_index', 'count']
-    h3_counts['lat'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
-    h3_counts['lng'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
-    center_lat = h3_counts['lat'].mean()
-    center_lng = h3_counts['lng'].mean()
+    # центр карты
+    center_lat = h3_top['lat'].mean()
+    center_lng = h3_top['lng'].mean()
     m = folium.Map(location=[center_lat, center_lng], zoom_start=12)
 
-    # ограничение карты, чтобы не включать всю карту мира
-    sw = [h3_counts['lat'].min(), h3_counts['lng'].min()]
-    ne = [h3_counts['lat'].max(), h3_counts['lng'].max()]
-    m.fit_bounds([sw, ne])
+    # нормализация значений (чтобы цвета были адекватные)
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
+    h3_top['normalized'] = scaler.fit_transform(h3_top[[value_column]])
 
-    heat_data = h3_counts[['lat', 'lng', 'count']].values.tolist()
+    heat_data = h3_top[['lat', 'lng', 'normalized']].values.tolist()
     HeatMap(heat_data, radius=15, blur=10, max_zoom=1).add_to(m)
 
     if save_path:
