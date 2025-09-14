@@ -22,13 +22,23 @@ def identify_popular_routes(df):
     return popular_routes.sort_values(by='count', ascending=False)
 
 def plot_heatmap(df, save_path=None):
-    df['count'] = 1
-    heatmap_data = df.pivot_table(index='lat', columns='lng', values='count', aggfunc='sum', fill_value=0)
-    sns.heatmap(heatmap_data, cmap='YlGnBu')
-    plt.title('Тепловая карта спроса')
+    # Aggregate demand by H3 cell
+    h3_counts = df['h3_index'].value_counts().reset_index()
+    h3_counts.columns = ['h3_index', 'count']
+    # Get the center lat/lng for each H3 cell
+    import h3
+    h3_counts['lat'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[0])
+    h3_counts['lng'] = h3_counts['h3_index'].apply(lambda h: h3.cell_to_latlng(h)[1])
+    # Plot using rounded coordinates for a 2D heatmap
+    plt.figure(figsize=(10, 8))
+    sns.scatterplot(
+        data=h3_counts, x='lng', y='lat', size='count', hue='count',
+        palette='YlGnBu', legend=False, sizes=(20, 200)
+    )
+    plt.title('Тепловая карта спроса (по H3)')
     if save_path:
         plt.savefig(save_path)
-        print(f"Heatmap was saved to {save_path}")
+        print(f"Heatmap saved to {save_path}")
     plt.show()
 
 def optimize_driver_distribution(df, total_drivers=100):
