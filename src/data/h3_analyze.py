@@ -5,7 +5,7 @@ import matplotlib as plt
 
 def analyze_geodata(df):
     # Assign H3 index for each point
-    df['h3_index'] = df.apply(lambda row: h3.geo_to_h3(row['lat'], row['lng'], 9), axis=1)
+    df['h3_index'] = df.apply(lambda row: geo_to_h3(row['lat'], row['lng'], 9), axis=1)
     # For each trip, get start and end H3 index
     df = df.sort_values(['randomized_id', 'azm'])  # Sort by trip and azimuth (or timestamp if available)
     start_h3 = df.groupby('randomized_id')['h3_index'].first().rename('start_h3_index')
